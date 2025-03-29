@@ -27,13 +27,14 @@ export default function Home() {
     const [loading, setLoading] = useState(true);
     const router = useRouter();
 
-    // Handle login
+    // ✅ Handle login
     const handleLogin = async () => {
         try {
             const user = await login();
             if (user) {
                 console.log("✅ Login successful!", user.displayName);
                 setIsLoggedIn(true);
+                await fetchUserData(user);
             } else {
                 console.warn("⚠️ Login did not return a user.");
             }
@@ -42,7 +43,7 @@ export default function Home() {
         }
     };
 
-    // Handle logout
+    // ✅ Handle logout
     const handleLogout = async () => {
         try {
             await logout();
@@ -57,7 +58,7 @@ export default function Home() {
         }
     };
 
-    // Fetch user data from Firestore
+    // ✅ Fetch user data from Firestore
     const fetchUserData = async (user) => {
         try {
             console.log("🔍 Fetching user data for:", user.uid);
@@ -78,7 +79,7 @@ export default function Home() {
         }
     };
 
-    // Handle authentication state changes
+    // ✅ Handle authentication state changes
     useEffect(() => {
         console.log("🔄 Checking auth state...");
         setLoading(true);
@@ -99,7 +100,6 @@ export default function Home() {
                 } catch (error) {
                     console.error("❌ Error during auth state processing:", error);
                 } finally {
-                    console.log("✅ Auth state processing complete.");
                     setLoading(false);
                 }
             } else {
@@ -113,7 +113,7 @@ export default function Home() {
         return () => unsubscribe();
     }, []);
 
-    // Callback to receive generated email from the EmailGenerator component
+    // ✅ Callback to receive generated email from the EmailGenerator component
     const handleEmailGenerated = (email) => {
         setGeneratedEmail(email);
     };

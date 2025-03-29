@@ -43,16 +43,16 @@ console.log("🔑 Firebase Auth Initialized");
 const db = getFirestore(app);
 console.log("🗃️ Firestore Initialized");
 
-// ✅ Enable offline persistence (early initialization)
+// ✅ Enable offline persistence with robust error handling
 enableIndexedDbPersistence(db)
     .then(() => {
         console.log("✅ Offline persistence enabled");
     })
     .catch((err) => {
         if (err.code === "failed-precondition") {
-            console.warn("⚠️ Offline persistence can only be enabled in one tab at a time.");
+            console.warn("⚠️ Offline persistence failed: Multiple tabs open. Only one tab at a time can have persistence enabled.");
         } else if (err.code === "unimplemented") {
-            console.warn("⚠️ The current browser does not support offline persistence.");
+            console.warn("⚠️ Offline persistence is not available in this browser.");
         } else {
             console.error("❌ Failed to enable offline persistence:", err);
         }
