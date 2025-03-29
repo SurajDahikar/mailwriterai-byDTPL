@@ -15,7 +15,6 @@ import {
     query,
     where,
     getDocs,
-    enableIndexedDbPersistence,
 } from "firebase/firestore";
 import { initializeApp } from "firebase/app";
 import axios from "axios";
@@ -42,21 +41,6 @@ console.log("🔑 Firebase Auth Initialized");
 
 const db = getFirestore(app);
 console.log("🗃️ Firestore Initialized");
-
-// ✅ Enable offline persistence with robust error handling
-enableIndexedDbPersistence(db)
-    .then(() => {
-        console.log("✅ Offline persistence enabled");
-    })
-    .catch((err) => {
-        if (err.code === "failed-precondition") {
-            console.warn("⚠️ Offline persistence failed: Multiple tabs open. Only one tab at a time can have persistence enabled.");
-        } else if (err.code === "unimplemented") {
-            console.warn("⚠️ Offline persistence is not available in this browser.");
-        } else {
-            console.error("❌ Failed to enable offline persistence:", err);
-        }
-    });
 
 // ✅ Initialize Analytics only on the client side
 if (typeof window !== "undefined") {
@@ -129,6 +113,7 @@ const login = async () => {
         return user;
     } catch (error) {
         console.error("❌ Login failed:", error);
+        throw error; // Re-throw the error to be caught in the component
     }
 };
 
@@ -144,6 +129,7 @@ const saveGeneratedEmail = async (uid, subject, content) => {
         console.log("✉️ Email saved successfully!");
     } catch (error) {
         console.error("❌ Failed to save email:", error);
+        throw error; // Re-throw the error
     }
 };
 
@@ -161,7 +147,7 @@ const fetchSavedEmails = async (uid) => {
         return emails;
     } catch (error) {
         console.error("❌ Failed to fetch emails:", error);
-        return [];
+        throw error; // Re-throw the error
     }
 };
 
@@ -173,7 +159,7 @@ const checkPremiumStatus = async (uid) => {
         return userSnapshot.exists() && userSnapshot.data().isPremium;
     } catch (error) {
         console.error("❌ Error checking premium status:", error);
-        return false;
+        throw error; // Re-throw the error
     }
 };
 
@@ -195,11 +181,11 @@ const upgradeToPremium = async (uid, amount, paymentMethod) => {
             return true;
         } else {
             console.error("❌ Payment failed. No order ID returned.");
-            return false;
+            throw new Error("Payment failed. No order ID returned."); // Throw error
         }
     } catch (error) {
         console.error("❌ Upgrade failed:", error);
-        return false;
+        throw error; // Re-throw the error
     }
 };
 
@@ -223,7 +209,7 @@ const applyReferralCode = async (referralCode) => {
         }
     } catch (error) {
         console.error("❌ Failed to apply referral code:", error);
-        return false;
+        throw error; // Re-throw error
     }
 };
 
@@ -234,6 +220,7 @@ const logout = async () => {
         console.log("🚪 User logged out successfully");
     } catch (error) {
         console.error("❌ Logout failed:", error);
+        throw error; // Re-throw error
     }
 };
 
