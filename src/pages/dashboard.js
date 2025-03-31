@@ -4,6 +4,17 @@ import { useState, useEffect } from "react";
 import { auth, fetchSavedEmails, logout } from "../lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import { useRouter } from "next/router";
+import {
+  Container,
+  Typography,
+  Button,
+  Paper,
+  CircularProgress,
+  Box,
+  Divider,
+} from "@mui/material";
+import LogoutIcon from "@mui/icons-material/Logout";
+import EmailIcon from "@mui/icons-material/Email";
 
 export default function Dashboard() {
   const [emails, setEmails] = useState([]);
@@ -32,35 +43,70 @@ export default function Dashboard() {
   };
 
   if (loading) {
-    return <p>Loading your saved emails...</p>;
+    return (
+      <Container maxWidth="md" sx={{ mt: 4, textAlign: "center" }}>
+        <CircularProgress />
+        <Typography variant="body1" sx={{ mt: 2 }}>
+          Loading your saved emails...
+        </Typography>
+      </Container>
+    );
   }
 
   return (
-    <div className="p-4">
-      <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-bold">Saved Emails</h1>
-        <button
+    <Container maxWidth="md" sx={{ mt: 4 }}>
+      <Box
+        display="flex"
+        justifyContent="space-between"
+        alignItems="center"
+        mb={3}
+      >
+        <Typography variant="h4" fontWeight="bold">
+          Saved Emails
+        </Typography>
+        <Button
+          variant="contained"
+          color="error"
+          startIcon={<LogoutIcon />}
           onClick={handleLogout}
-          className="px-4 py-2 bg-red-500 text-white rounded"
+          sx={{ textTransform: "none" }}
         >
           Logout
-        </button>
-      </div>
+        </Button>
+      </Box>
       {emails.length === 0 ? (
-        <p>No saved emails found.</p>
+        <Typography variant="body1" color="text.secondary" align="center">
+          No saved emails found.
+        </Typography>
       ) : (
-        <ul className="space-y-4">
+        <Box display="flex" flexDirection="column" gap={2}>
           {emails.map((email) => (
-            <li key={email.id} className="p-4 bg-gray-100 rounded">
-              <h2 className="text-lg font-semibold">{email.subject}</h2>
-              <p className="text-gray-700">{email.content}</p>
-              <p className="text-sm text-gray-500">
+            <Paper
+              key={email.id}
+              elevation={3}
+              sx={{ p: 3, borderRadius: 3, position: "relative" }}
+            >
+              <Box display="flex" alignItems="center" gap={1} mb={1}>
+                <EmailIcon color="primary" />
+                <Typography variant="h6" fontWeight="bold">
+                  {email.subject}
+                </Typography>
+              </Box>
+              <Divider sx={{ mb: 1 }} />
+              <Typography
+                variant="body1"
+                color="text.secondary"
+                sx={{ whiteSpace: "pre-wrap", mb: 1 }}
+              >
+                {email.content}
+              </Typography>
+              <Typography variant="body2" color="text.disabled">
                 Generated on: {new Date(email.timestamp).toLocaleString()}
-              </p>
-            </li>
+              </Typography>
+            </Paper>
           ))}
-        </ul>
+        </Box>
       )}
-    </div>
+    </Container>
   );
 }

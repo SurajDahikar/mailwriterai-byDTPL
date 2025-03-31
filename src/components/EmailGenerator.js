@@ -1,9 +1,20 @@
 import React, { useState, useEffect } from "react";
-import { generateEmail } from "../lib/gemini"; // Updated import
-import { auth, db, applyReferralCode, checkPremiumStatus } from "../lib/firebase";
+import { generateEmail } from "../lib/gemini";
+import { auth, db, checkPremiumStatus } from "../lib/firebase";
 import { doc, getDoc, updateDoc, arrayUnion } from "firebase/firestore";
 import jsPDF from "jspdf";
 import { useRouter } from "next/router";
+import {
+  Container,
+  Box,
+  Typography,
+  TextField,
+  Button,
+  Select,
+  MenuItem,
+  CircularProgress,
+  Paper,
+} from "@mui/material";
 
 export default function EmailGenerator() {
   const [subject, setSubject] = useState("");
@@ -11,15 +22,11 @@ export default function EmailGenerator() {
   const [tone, setTone] = useState("Formal");
   const [language, setLanguage] = useState("English");
   const [generatedEmail, setGeneratedEmail] = useState("");
-  const [isRecording, setIsRecording] = useState(false);
-  const [referralLink, setReferralLink] = useState("");
-  const [referralCount, setReferralCount] = useState(0);
   const [credits, setCredits] = useState(0);
   const [loading, setLoading] = useState(false);
   const [isPremium, setIsPremium] = useState(false);
   const router = useRouter();
 
-  // Fetch user data (credits, referral count, and premium status)
   useEffect(() => {
     const fetchUserData = async () => {
       try {
@@ -30,8 +37,6 @@ export default function EmailGenerator() {
           if (userSnapshot.exists()) {
             const data = userSnapshot.data();
             setCredits(data.credits || 0);
-            setReferralCount(data.referrals || 0);
-            setReferralLink(`${window.location.origin}/?ref=${data.referralCode}`);
             setIsPremium(await checkPremiumStatus(user.uid));
           }
         }
@@ -43,7 +48,6 @@ export default function EmailGenerator() {
     fetchUserData();
   }, []);
 
-  // Generate Email
   const handleGenerate = async () => {
     if (!subject.trim() || !content.trim()) {
       alert("Please enter a subject and content before generating the email.");
@@ -59,10 +63,9 @@ export default function EmailGenerator() {
     const prompt = `Write a ${tone.toLowerCase()} email in ${language} about: ${subject}. Content: ${content}`;
 
     try {
-      const email = await generateEmail(prompt); // Use Gemini API function
+      const email = await generateEmail(prompt);
       setGeneratedEmail(email);
 
-      // Save the generated email to Firebase
       const user = auth.currentUser;
       if (user) {
         const userDocRef = doc(db, "users", user.uid);
@@ -77,13 +80,8 @@ export default function EmailGenerator() {
         await updateDoc(userDocRef, {
           emails: arrayUnion(emailData),
         });
-      }
 
-      // Deduct 1 credit after successful email generation for non-premium users
-      if (!isPremium) {
-        const user = auth.currentUser;
-        if (user) {
-          const userDocRef = doc(db, "users", user.uid);
+        if (!isPremium) {
           await updateDoc(userDocRef, {
             credits: credits - 1,
           });
@@ -98,7 +96,6 @@ export default function EmailGenerator() {
     }
   };
 
-  // Download Email as PDF
   const handleDownloadPDF = () => {
     try {
       const pdfDoc = new jsPDF();
@@ -112,128 +109,108 @@ export default function EmailGenerator() {
     }
   };
 
-  // Voice Input for Email Content
-  const handleVoiceInput = () => {
-    if (!("webkitSpeechRecognition" in window)) {
-      alert("Voice recognition not supported on this browser.");
-      return;
-    }
-
-    const recognition = new window.webkitSpeechRecognition();
-    recognition.lang = language === "Hindi" ? "hi-IN" : "en-US";
-    recognition.continuous = false;
-    recognition.interimResults = false;
-
-    recognition.onstart = () => {
-      setIsRecording(true);
-    };
-
-    recognition.onresult = (event) => {
-      const spokenText = event.results[0][0].transcript;
-      setContent((prev) => prev + " " + spokenText);
-    };
-
-    recognition.onerror = (event) => {
-      console.error("Voice recognition error:", event.error);
-      alert("Voice recognition failed. Please try again.");
-    };
-
-    recognition.onend = () => {
-      setIsRecording(false);
-    };
-
-    recognition.start();
-  };
-
-  // Apply Referral Code (from URL)
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const refCode = urlParams.get("ref");
-    if (refCode) {
-      applyReferralCode(refCode);
-    }
-  }, []);
-
-  // Copy Referral Link
-  const handleCopyReferralLink = () => {
-    navigator.clipboard.writeText(referralLink);
-    alert("Referral link copied to clipboard!");
-  };
-
-  // Upgrade to Premium
-  const handleUpgrade = () => {
-    router.push("/upgrade");
-  };
-
   return (
-    <div className="p-4 bg-white rounded-xl shadow-md max-w-md mx-auto">
-      <h2 className="text-xl font-bold mb-4">Mail Writer AI</h2>
-      <p className="text-gray-600 mb-2">
-        Credits: {isPremium ? "Unlimited (Premium)" : credits}
-      </p>
-      <p className="text-gray-600 mb-2">Referrals: {referralCount}</p>
+    <Container maxWidth="md" sx={{ mt: 5, mb: 5 }}>
+      <Paper elevation={6} sx={{ p: 4, borderRadius: 4 }}>
+        <Typography variant="h4" align="center" gutterBottom fontWeight="bold">
+          ✉️ Mail Writer AI
+        </Typography>
+        <Typography variant="body1" align="center" color="text.secondary" gutterBottom>
+          {isPremium ? "Unlimited Credits (Premium)" : `Credits: ${credits}`}
+        </Typography>
 
-      {!isPremium && (
-        <button
-          onClick={handleUpgrade}
-          className="w-full p-2 mb-2 bg-purple-500 text-white rounded"
-        >
-          Upgrade to Premium
-        </button>
-      )}
-
-      <input
-        type="text"
-        placeholder="Subject"
-        className="w-full p-2 mb-2 border rounded"
-        value={subject}
-        onChange={(e) => setSubject(e.target.value)}
-      />
-
-      <textarea
-        placeholder="Message Content"
-        className="w-full p-2 mb-2 border rounded"
-        value={content}
-        onChange={(e) => setContent(e.target.value)}
-      />
-
-      <button
-        onClick={handleVoiceInput}
-        className={`w-full p-2 rounded mb-2 ${isRecording ? "bg-red-500" : "bg-blue-500"} text-white`}
-      >
-        {isRecording ? "Recording..." : "Voice Input"}
-      </button>
-
-      <button
-        onClick={handleCopyReferralLink}
-        className="w-full p-2 mb-2 bg-green-500 text-white rounded"
-      >
-        Copy Referral Link
-      </button>
-
-      <button
-        onClick={handleGenerate}
-        disabled={loading}
-        className={`w-full p-2 rounded mb-2 ${loading ? "bg-gray-400" : "bg-blue-500"} text-white`}
-      >
-        {loading ? "Generating..." : "Generate Email"}
-      </button>
-
-      {generatedEmail && (
-        <>
-          <textarea
-            className="w-full p-2 mb-2 border rounded"
-            value={generatedEmail}
-            readOnly
+        <Box sx={{ mt: 3 }}>
+          <TextField
+            label="Email Subject"
+            variant="outlined"
+            fullWidth
+            margin="normal"
+            value={subject}
+            onChange={(e) => setSubject(e.target.value)}
+            sx={{ mb: 2 }}
           />
-          <button
-            onClick={handleDownloadPDF}
-            className="w-full bg-green-500 text-white p-2 rounded mb-2"
+
+          <Box display="flex" gap={2} mt={2} justifyContent="space-between">
+            <Select
+              fullWidth
+              variant="outlined"
+              value={tone}
+              onChange={(e) => setTone(e.target.value)}
+              sx={{ mb: 2 }}
+            >
+              {["Formal", "Friendly", "Apologetic", "Persuasive", "Empathetic"].map((toneOption) => (
+                <MenuItem key={toneOption} value={toneOption}>
+                  {toneOption}
+                </MenuItem>
+              ))}
+            </Select>
+
+            <Select
+              fullWidth
+              variant="outlined"
+              value={language}
+              onChange={(e) => setLanguage(e.target.value)}
+              sx={{ mb: 2 }}
+            >
+              {["English", "Hindi", "Hinglish"].map((lang) => (
+                <MenuItem key={lang} value={lang}>
+                  {lang}
+                </MenuItem>
+              ))}
+            </Select>
+          </Box>
+
+          <TextField
+            label="Message Content"
+            variant="outlined"
+            fullWidth
+            multiline
+            rows={4}
+            margin="normal"
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            sx={{ mb: 2 }}
+          />
+
+          <Button
+            variant="contained"
+            color="primary"
+            fullWidth
+            onClick={handleGenerate}
+            disabled={loading}
+            startIcon={loading && <CircularProgress size={20} color="inherit" />}
+            sx={{
+              mt: 2,
+              py: 1.5,
+              fontWeight: "bold",
+              borderRadius: 3,
+              textTransform: "none",
+            }}
           >
-            Download as PDF
-          </button>
-        </>
-      )}
-    </div>
+            {loading ? "Generating..." : "Generate Email"}
+          </Button>
+
+          {generatedEmail && (
+            <Box sx={{ mt: 3 }}>
+              <Typography variant="h6" gutterBottom>
+                Generated Email:
+              </Typography>
+              <Paper elevation={3} sx={{ p: 2, mt: 1, whiteSpace: "pre-wrap", borderRadius: 3 }}>
+                {generatedEmail}
+              </Paper>
+              <Button
+                variant="contained"
+                color="success"
+                fullWidth
+                sx={{ mt: 2, py: 1.5, fontWeight: "bold", textTransform: "none" }}
+                onClick={handleDownloadPDF}
+              >
+                📄 Download as PDF
+              </Button>
+            </Box>
+          )}
+        </Box>
+      </Paper>
+    </Container>
   );
 }
