@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { generateEmail } from "../lib/openai";
+import { generateEmail } from "../lib/genai";
 import { auth, db, applyReferralCode, checkPremiumStatus } from "../lib/firebase";
 import { doc, getDoc, updateDoc, arrayUnion } from "firebase/firestore";
 import jsPDF from "jspdf";

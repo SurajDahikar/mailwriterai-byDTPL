@@ -1,17 +1,45 @@
-import generateEmail from "@/lib/openai";
+import { google } from "@google-cloud/genai";
+import dotenv from "dotenv";
 
-export default async function handler(req, res) {
-  const { prompt } = req.body;
+dotenv.config();
 
-  if (!prompt) {
-    return res.status(400).json({ error: "Prompt is required" });
-  }
+export default async function generateEmail(req, res) {
+    try {
+        const apiKey = process.env.GEMINI_API_KEY;
+        if (!apiKey) {
+            throw new Error("API key is not set");
+        }
 
-  const emailContent = await generateEmail(prompt);
+        const url = "https://genai.googleapis.com/v1beta2/models/text-bison-001:predict";
+        const prompt = req.body.prompt;
 
-  if (!emailContent) {
-    return res.status(500).json({ error: "Failed to generate email" });
-  }
+        const response = await fetch(url, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${apiKey}`,
+            },
+            body: JSON.stringify({
+                instances: [{ content: prompt }],
+                parameters: {
+                    temperature: 0.7,
+                    maxOutputTokens: 1000,
+                },
+            }),
+        });
 
-  res.status(200).json({ email: emailContent });
+        if (!response.ok) {
+            const errorDetails = await response.text();
+            console.error("Error response from API:", errorDetails);
+            return res.status(response.status).json({ error: "Failed to generate email", details: errorDetails });
+        }
+
+        const data = await response.json();
+        console.log("API response:", data);
+
+        res.status(200).json({ email: data.predictions[0].content });
+    } catch (error) {
+        console.error("Internal server error:", error.message);
+        res.status(500).json({ error: "Internal server error", message: error.message });
+    }
 }
