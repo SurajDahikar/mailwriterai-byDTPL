@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { generateEmail } from "../lib/genai";
+import { generateEmail } from "../lib/gemini"; // Updated import
 import { auth, db, applyReferralCode, checkPremiumStatus } from "../lib/firebase";
 import { doc, getDoc, updateDoc, arrayUnion } from "firebase/firestore";
 import jsPDF from "jspdf";
@@ -59,7 +59,7 @@ export default function EmailGenerator() {
     const prompt = `Write a ${tone.toLowerCase()} email in ${language} about: ${subject}. Content: ${content}`;
 
     try {
-      const email = await generateEmail(prompt);
+      const email = await generateEmail(prompt); // Use Gemini API function
       setGeneratedEmail(email);
 
       // Save the generated email to Firebase

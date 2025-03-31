@@ -1,50 +1,46 @@
-import { GoogleAuth } from "google-auth-library";
+// src/pages/api/generate.js
+import { GoogleGenerativeAI } from "@google/generative-ai";
+
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+
+async function listAvailableModels() {
+  const models = await genAI.getAvailableModels();
+  console.log("Available Models:", models);
+  return models;
+}
 
 export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
+  if (req.method === "GET") {
+    try {
+      const availableModels = await listAvailableModels();
+      return res.status(200).json({ models: availableModels });
+    } catch (error) {
+      console.error("Error listing models:", error);
+      return res.status(500).json({ error: "Failed to list models" });
+    }
   }
 
-  const { prompt } = req.body;
+  if (req.method === "POST") {
+    try {
+      const { prompt } = req.body;
 
-  try {
-    // Get the access token
-    const auth = new GoogleAuth({
-      keyFile: "./aikey.json",
-      scopes: ["https://www.googleapis.com/auth/generative-language"],
-    });
-    const client = await auth.getClient();
-    const { token } = await client.getAccessToken();
+      if (!prompt) {
+        return res.status(400).json({ error: "Prompt is required" });
+      }
 
-    // Corrected model endpoint and payload structure
-    const response = await fetch("https://generativelanguage.googleapis.com/v1beta2/models/gemini-2.0:generateText", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        model: "models/gemini-2.0",
-        prompt: {
-          text: prompt,
-        },
-        temperature: 0.7,
-        candidateCount: 1,
-        topP: 0.9,
-      }),
-    });
+      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error("Error response from Gemini API:", errorData);
-      return res.status(response.status).json({ error: errorData.error.message });
+      const result = await model.generateContent(`Write a professional, heartfelt email: ${prompt}`);
+
+      const response = await result.response;
+      const email = response.text();
+
+      res.status(200).json({ email });
+    } catch (error) {
+      console.error("Gemini API error:", error);
+      res.status(500).json({ error: "Internal server error" });
     }
-
-    const data = await response.json();
-    const generatedText = data.candidates[0]?.output || "No response from the model.";
-    res.status(200).json({ text: generatedText });
-  } catch (error) {
-    console.error("Error calling Gemini API:", error.message);
-    res.status(500).json({ error: "Internal server error" });
+  } else {
+    return res.status(405).json({ error: "Method not allowed" });
   }
 }
